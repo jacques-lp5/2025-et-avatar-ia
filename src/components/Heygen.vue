@@ -373,10 +373,10 @@ const onStart = async () => {
     tick()
   }, 1500)
 
-  setTimeout(() => {
-    talkHandler('Bonjour')
-    avatarIsSpeaking = true;
-  }, 2500)
+  // setTimeout(() => {
+  // talkHandler('Bonjour')
+  // avatarIsSpeaking = true;
+  // }, 2500)
 
 }
 
@@ -401,7 +401,7 @@ defineExpose({
   <div class="heygen">
     <div ref="logs" class="logs"></div>
     <div class="transcription">
-      <h2 ref="status">Transcription</h2>
+      <h2 ref="status"></h2>
       <hr>
       <ul>
         <li v-for="(transcript, index) in transcriptList" :key="index">{{ transcript }}</li>
