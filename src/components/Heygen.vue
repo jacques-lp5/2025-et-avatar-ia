@@ -25,7 +25,7 @@ const API_KEY = import.meta.env.VITE_HEYGEN_API_KEY;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 let recognition = null;
-let active = false
+let active = true
 let avatarIsSpeaking = false;
 const intervalTime = 2000
 let time = 0
@@ -36,11 +36,17 @@ let sessionInfo = null;
 let peerConnection = null;
 
 const updateLogs = (message) => {
+  if(!logs.value) {
+    return;
+  }
   logs.value.innerHTML += message + '<br>';
   logs.value.scrollTop = logs.value.scrollHeight;
 }
 
 const updateStatus = (message) => {
+  if(!status.value) {
+    return;
+  }
   status.value.innerHTML = message;
 }
 
@@ -246,7 +252,7 @@ const stopSession = async (session_id) => {
 // ---------------------
 
 const talkToOpenAI = async (prompt) => {
-  const response = await fetch(`${BACKEND_URL}`, {
+  const response = await fetch(`${BACKEND_URL}/openai/complete`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -259,7 +265,10 @@ const talkToOpenAI = async (prompt) => {
     throw new Error('Server error');
   } else {
     const data = await response.json();
-    transcriptList.value.push(data.text);
+    transcriptList.value.push({
+      role: 'avatar',
+      content: data.text,
+    });
     return data.text;
   }
   // try {
@@ -333,29 +342,62 @@ const repeat = async (session_id, text) => {
   }
 }
 
+const sendTranscription = async () => {
+  const response = await fetch(`${BACKEND_URL}/transcription`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({transcription :transcriptList.value}),
+  });
+  if (response.status === 500) {
+    console.error('Server error');
+    updateLogs('Server Error. Please ask the staff for help');
+    throw new Error('Server error');
+  } else {
+    const data = await response.json();
+    console.log('Transcription sent:', data);
+    return data;
+  }
+}
+
 // ---------------------
 
 const onTranscriptResult = (event) => {
   let transcript = event.results[event.results.length - 1][0].transcript;
-  transcriptList.value.push(transcript);
+  if(transcript === '') {
+    return;
+  }
+  if(transcriptList.value.length) {
+    const last = transcriptList.value[transcriptList.value.length - 1];
+    if(last && last.content.toLowerCase().includes(transcript.toLowerCase())) {
+      return;
+    }
+  }
+  transcriptList.value.push({
+    role: 'user',
+    content: transcript,
+  });
   talkHandler(transcript);
   active = false;
 }
 
 const onTranscriptEnd = () => {
-  active = true
+  // active = true
+  updateLogs('Speech recognition ended');
+  recognition.start()
   // recognition.stop();
 }
 
 const onTranscriptError = (ev) => {
-  active = true;
-  console.error("Speech recognition error:", ev.error);
+  // active = true;
+  updateLogs("Speech recognition error:", ev.error);
 }
 
 // ---------------------
 
 const onStart = async () => {
-  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.lang = "fr-FR";
   recognition.continuous = true;
   recognition.interimResults = false;
@@ -378,6 +420,19 @@ const onStart = async () => {
   // avatarIsSpeaking = true;
   // }, 2500)
 
+}
+
+const onEnd = async () => {
+  if (recognition) {
+    recognition.stop();
+  }
+  await closeConnectionHandler();
+  await sendTranscription()
+  if (peerConnection) {
+    peerConnection.close();
+  }
+  updateLogs('Session ended');
+  emits('close');
 }
 
 onBeforeUnmount(() => {
@@ -404,14 +459,20 @@ defineExpose({
       <h2 ref="status"></h2>
       <hr>
       <ul>
-        <li v-for="(transcript, index) in transcriptList" :key="index">{{ transcript }}</li>
+        <li
+            v-for="(transcript, index) in transcriptList"
+            :key="index"
+            :class="transcript.role === 'user' ? 'user' : 'avatar'">
+          <span>{{ transcript.role.toUpperCase() }}: </span>
+          <span>{{ transcript.content }}</span>
+        </li>
       </ul>
     </div>
     <div class="videoWrap">
       <video ref="mediaElement" class="videoEle show" autoplay></video>
       <canvas ref="canvasElement" class="videoEle hide"></canvas>
     </div>
-    <button class="close" @click="closeConnectionHandler">CLOSE</button>
+    <button class="close" @click="onEnd">END</button>
   </div>
 </template>
 
@@ -488,9 +549,15 @@ defineExpose({
     li {
       margin: 5px 0;
       font-size: 18px;
-      color: #555;
     }
   }
+}
+
+.user {
+  color: blue;
+}
+.avatar {
+  color: green;
 }
 
 .close {

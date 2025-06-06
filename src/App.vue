@@ -1,6 +1,8 @@
 <script setup>
-import {computed, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import Heygen from "@/components/Heygen.vue";
+import Modal from "@/components/Modal/index.vue";
+import {useIndexStore} from "../stores/index.js";
 
 const STATE = {
   HOME : 'home',
@@ -8,8 +10,22 @@ const STATE = {
   HEYGEN : 'heygen',
 }
 const state = ref(STATE.HOME);
+const store = useIndexStore()
 const heygen = ref(null);
 const heygenReady = ref(false);
+
+const modalVisible = ref(false);
+const storeID = computed(() => store.getStoreId);
+
+const onKeydown = (ev) => {
+  if (ev.key === 'Escape') {
+    modalVisible.value = !modalVisible.value;
+  }
+};
+
+const onStoreIdChange = (ev) => {
+  store.setStoreID(ev.target.value);
+};
 
 const setState = (newState) => {
   state.value = newState;
@@ -33,15 +49,22 @@ const text = computed(() => {
   }
 });
 
-
 const onHeygenReady = () => {
   heygenReady.value = true;
   state.value = STATE.HEYGEN;
 };
+
+onMounted(() => {
+  document.addEventListener('keydown', onKeydown);
+});
 </script>
 
 <template>
   <main>
+    <Modal :visible="modalVisible">
+        <div>Store ID</div>
+        <input type="text" v-model="storeID" placeholder="Enter Store ID" @change="onStoreIdChange"/>
+    </Modal>
     <div class="background">
       <video autoplay loop muted playsinline v-if="!heygenReady">
         <source src="@/assets/loop.mp4" type="video/mp4">

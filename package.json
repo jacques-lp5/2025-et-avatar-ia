@@ -4,17 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "backend": "deno run --allow-net src/server/index.js",
+    "backend": "deno run --allow-net --allow-write --allow-read --allow-sys --allow-env --allow-ffi --allow-run src/server/index.js",
     "dev": "vite",
     "build": "vite build",
     "build:exe": "deno compile --allow-net --allow-read --allow-run server.js",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vueuse/core": "^13.3.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "gsap": "^3.13.0",
     "openai": "^5.1.0",
+    "pinia": "^3.0.3",
     "vite-express": "^0.21.1",
     "vue": "^3.5.13"
   },

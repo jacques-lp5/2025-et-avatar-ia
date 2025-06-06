@@ -44,6 +44,15 @@ app.post('/openai/complete', async (req, res) => {
   }
 });
 
+app.post('/transcription', async (req, res) => {
+  try {
+    const transcription = req.body.transcription;
+    console.log('Transcription', transcription);
+    res.json({ text: transcription });
+  } catch (error) {
+    res.status(500).send('Error processing your request');
+  }
+})
 
 const server = app.listen(3000, "0.0.0.0", () =>
   console.log("Server is listening...")
